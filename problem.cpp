@@ -1,4 +1,3 @@
-//Problem
 #include <iostream>
 #include <string>
 #include <random>
@@ -43,7 +42,7 @@ void pickupForks(int i) {
     cout << philosophers[i] << " picked up LEFT fork " << left << endl;
     
     // Small delay - this makes ALL philosophers pick up left fork first!
-    this_thread::sleep_for(chrono::milliseconds(50));
+    this_thread::sleep_for(chrono::milliseconds(500));
     
     // Step 2: Try to pick up RIGHT fork
     // DEADLOCK HAPPENS HERE! Everyone waiting for right fork!
@@ -98,8 +97,6 @@ void philosopherLife(int id) {
 int main() {
     srand(time(0));
     
-    cout << "== DEADLOCK VERSION (BAD SOLUTION) ==" << endl;
-    
     cout << "Number of philosophers: " << NUM_PHILOSOPHERS << endl;
     cout << "Number of forks: " << NUM_PHILOSOPHERS << endl << endl;
     
@@ -119,7 +116,7 @@ int main() {
         philosopherThreads[i] = thread(philosopherLife, i);
     }
     
-    // Wait for all philosophers to finish
+    // Wait for all philosophers to finish (they won't - deadlock!)
     for (int i = 0; i < NUM_PHILOSOPHERS; i++) {
         philosopherThreads[i].join();
     }
