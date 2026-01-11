@@ -1,3 +1,4 @@
+//Problem
 #include <iostream>
 #include <string>
 #include <random>
@@ -11,111 +12,106 @@ using namespace std;
 
 const int NUM_PHILOSOPHERS = 5;
 
-// Philosopher names
-string philosophers[NUM_PHILOSOPHERS] = {"Rowan", "Jackie", "Matthew", "Cillian", "Tom"};
+string philosophers[NUM_PHILOSOPHERS] = {"Aristotle", "Plato", "Socrates", "Descartes", "Kant"};
 
-mutex forkMutexes[NUM_PHILOSOPHERS]; // One mutex per fork
-mutex coutMutex; // Protect console output from race conditions
+mutex forks[NUM_PHILOSOPHERS]; // One mutex per fork
 
+// get random time in milliseconds
 int getRandomTime(int min, int max) {
     return (rand() % (max - min + 1)) + min;
 }
 
 // Get left fork index
-int leftFork(int philosopherId) {
-    return philosopherId;
+int leftFork(int i) {
+    return i;
 }
 
-// Get right fork index  
-int rightFork(int philosopherId) {
-    return (philosopherId + 1) % NUM_PHILOSOPHERS;
+// Get right fork index
+int rightFork(int i) {
+    return (i + 1) % NUM_PHILOSOPHERS;
 }
 
-void pickupForks(int id) {
-    int left = leftFork(id);
-    int right = rightFork(id);
+// Pick up forks - THIS CAUSES DEADLOCK!
+void pickupForks(int i) {
+    int left = leftFork(i);
+    int right = rightFork(i);
     
-    {
-        lock_guard<mutex> lock(coutMutex);
-        cout << philosophers[id] << " is hungry and reaching for fork " << left << endl;
-    }
+    cout << philosophers[i] << " is trying to pick up forks..." << endl;
     
-    forkMutexes[left].lock();
+    // Step 1: Pick up LEFT fork
+    forks[left].lock();
+    cout << philosophers[i] << " picked up LEFT fork " << left << endl;
     
-    {
-        lock_guard<mutex> lock(coutMutex);
-        cout << philosophers[id] << " picked up left fork " << left << endl;
-    }
+    // Small delay - this makes ALL philosophers pick up left fork first!
+    this_thread::sleep_for(chrono::milliseconds(50));
     
-    // Small delay to increase chance of deadlock
-    this_thread::sleep_for(chrono::milliseconds(100));
+    // Step 2: Try to pick up RIGHT fork
+    // DEADLOCK HAPPENS HERE! Everyone waiting for right fork!
+    cout << philosophers[i] << " is waiting for RIGHT fork " << right << "..." << endl;
+    forks[right].lock();
     
-    {
-        lock_guard<mutex> lock(coutMutex);
-        cout << philosophers[id] << " is reaching for fork " << right << endl;
-    }
-    
-    forkMutexes[right].lock();
-    
-    {
-        lock_guard<mutex> lock(coutMutex);
-        cout << philosophers[id] << " picked up right fork " << right << endl;
-    }
+    cout << philosophers[i] << " picked up RIGHT fork " << right << endl;
 }
 
-void putdownForks(int id) {
-    int left = leftFork(id);
-    int right = rightFork(id);
+// Put down forks
+void putdownForks(int i) {
+    int left = leftFork(i);
+    int right = rightFork(i);
     
-    forkMutexes[left].unlock();
-    forkMutexes[right].unlock();
+    forks[left].unlock();
+    forks[right].unlock();
     
-    {
-        lock_guard<mutex> lock(coutMutex);
-        cout << philosophers[id] << " put down both forks" << endl;
-    }
+    cout << philosophers[i] << " put down both forks" << endl;
 }
 
+// simulate thinking
+void think(int philosopherId) {
+    int thinkTime = getRandomTime(500, 1000);
+    cout << philosophers[philosopherId] << " is thinking for " 
+         << thinkTime << "ms" << endl;
+    this_thread::sleep_for(chrono::milliseconds(thinkTime));
+}
+
+// simulate eating
+void eat(int philosopherId) {
+    int eatTime = getRandomTime(500, 1000);
+    cout << philosophers[philosopherId] << " is eating for " 
+         << eatTime << "ms" << endl;
+    this_thread::sleep_for(chrono::milliseconds(eatTime));
+}
+
+// Philosopher lifecycle
 void philosopherLife(int id) {
-    for (int i = 0; i < 3; i++) {
-        int thinkTime = getRandomTime(500, 1000);
+    for (int i = 0; i < 3; i++) { // Each philosopher tries to eat 3 times
+        think(id);
         
-        {
-            lock_guard<mutex> lock(coutMutex);
-            cout << philosophers[id] << " is thinking for " << thinkTime << "ms" << endl;
-        }
+        pickupForks(id);  // DEADLOCK WILL HAPPEN HERE!
         
-        this_thread::sleep_for(chrono::milliseconds(thinkTime));
-        
-        // Try to eat
-        pickupForks(id);
-        
-        int eatTime = getRandomTime(500, 1000);
-        
-        {
-            lock_guard<mutex> lock(coutMutex);
-            cout << philosophers[id] << " is eating for " << eatTime << "ms" << endl;
-        }
-        
-        this_thread::sleep_for(chrono::milliseconds(eatTime));
+        eat(id);
         
         putdownForks(id);
     }
     
-    {
-        lock_guard<mutex> lock(coutMutex);
-        cout << philosophers[id] << " is dne eating!" << endl;
-    }
+    cout << philosophers[id] << " is done eating!" << endl;
 }
 
 int main() {
     srand(time(0));
     
-    cout << "Number of philosophers: " << NUM_PHILOSOPHERS << endl << endl;
+    cout << "== DEADLOCK VERSION (BAD SOLUTION) ==" << endl;
     
-    cout << "== Starting simulation in 3 seconds ==" << endl;
-    this_thread::sleep_for(chrono::seconds(3));
+    cout << "Number of philosophers: " << NUM_PHILOSOPHERS << endl;
+    cout << "Number of forks: " << NUM_PHILOSOPHERS << endl << endl;
+    
+    cout << "Philosophers sitting at the table:" << endl;
+    for (int i = 0; i < NUM_PHILOSOPHERS; i++) {
+        cout << "Position " << i << ": " << philosophers[i] 
+             << " (left fork: " << i 
+             << ", right fork: " << (i + 1) % NUM_PHILOSOPHERS << ")" << endl;
+    }
     cout << endl;
+    
+    cout << "== Starting simulation ==" << endl << endl;
     
     thread philosopherThreads[NUM_PHILOSOPHERS];
     
@@ -123,11 +119,12 @@ int main() {
         philosopherThreads[i] = thread(philosopherLife, i);
     }
     
+    // Wait for all philosophers to finish
     for (int i = 0; i < NUM_PHILOSOPHERS; i++) {
         philosopherThreads[i].join();
     }
     
-    cout << endl << "== All philosphers are done ==" << endl;
+    cout << endl << "== All philosophers are done ==" << endl;
     
     return 0;
 }

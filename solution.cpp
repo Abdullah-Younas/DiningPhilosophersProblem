@@ -1,3 +1,5 @@
+//Solution
+
 #include <iostream>
 #include <string>
 #include <random>
@@ -126,13 +128,11 @@ void philosopherLife(int id) {
 int main() {
     srand(time(0));
     
-    cout << "=== MONITOR-BASED SOLUTION ===" << endl;
-    cout << "This solution PREVENTS deadlock using a monitor pattern" << endl << endl;
+    cout << "== MONITOR-BASED SOLUTION ==" << endl;
     
     cout << "Number of philosophers: " << NUM_PHILOSOPHERS << endl;
     cout << "Number of forks: " << NUM_PHILOSOPHERS << endl << endl;
     
-    // initial setup
     cout << "Philosophers sitting at the table:" << endl;
     for (int i = 0; i < NUM_PHILOSOPHERS; i++) {
         cout << "Position " << i << ": " << philosophers[i] 
@@ -141,13 +141,7 @@ int main() {
     }
     cout << endl;
     
-    cout << "How the monitor prevents deadlock:" << endl;
-    cout << "1. A philosopher can only eat if BOTH neighbors are NOT eating" << endl;
-    cout << "2. State is checked atomically (under mutex protection)" << endl;
-    cout << "3. Philosophers wait on condition variables if they can't eat" << endl;
-    cout << "4. When a philosopher finishes, neighbors are notified" << endl << endl;
-    
-    cout << "=== Starting concurrent simulation ===" << endl << endl;
+    cout << "=== Starting simulation ===" << endl << endl;
     
     thread philosopherThreads[NUM_PHILOSOPHERS];
     
